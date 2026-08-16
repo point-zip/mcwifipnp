@@ -132,6 +132,14 @@ public final class P2PManager {
 		this.hostMode = true;
 		this.serverPort = gameServerPort;
 		this.iroh.init();
+		// Warm up the endpoint (relay registration is asynchronous) in the background
+		// so a later member request does not have to wait for it.
+		async(new Runnable() {
+			@Override
+			public void run() {
+				P2PManager.this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
+			}
+		});
 		startAcceptLoop();
 	}
 
@@ -144,6 +152,13 @@ public final class P2PManager {
 			t.interrupt();
 			this.acceptThread = null;
 		}
+	}
+
+	/** Run a blocking P2P operation off the caller (game/netty) thread. */
+	private static void async(Runnable r) {
+		Thread t = new Thread(r, "MCWiFiPnP_P2P-async");
+		t.setDaemon(true);
+		t.start();
 	}
 
 	/** A member joined via the frp path: ask whether they want a direct connection. */
@@ -259,6 +274,12 @@ public final class P2PManager {
 			return;
 		}
 		this.iroh.init();
+		async(new Runnable() {
+			@Override
+			public void run() {
+				P2PManager.this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
+			}
+		});
 	}
 
 	/** The host asked whether we want a direct connection. Ask the player. */
@@ -312,20 +333,32 @@ public final class P2PManager {
 		this.pendingConsent = false;
 	}
 
-	/** The member accepted: offer hole punching to them. */
+	/** The member accepted: offer hole punching to them (blocking work on a bg thread). */
 	public void onConsentAcceptedFromMember(String playerName) {
 		if (!this.hostMode) {
 			return;
 		}
-		this.iroh.init();
-		this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
-		P2PHandler h = this.handler;
-		if (h != null) {
-			h.sendToClient(playerName, P2PMessage.offer(this.tokenRequired));
+		if (!this.enabled) {
+			// Host has P2P switched off: tell the member so they get feedback.
+			P2PHandler h = this.handler;
+			if (h != null) {
+				h.sendToClient(playerName, P2PMessage.deny());
+			}
+			return;
 		}
+		async(new Runnable() {
+			@Override
+			public void run() {
+				P2PManager.this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
+				P2PHandler h = P2PManager.this.handler;
+				if (h != null) {
+					h.sendToClient(playerName, P2PMessage.offer(P2PManager.this.tokenRequired));
+				}
+			}
+		});
 	}
 
-	/** The host offered hole punching. */
+	/** The host offered hole punching. Blocking setup runs on a background thread. */
 	public synchronized void onOfferFromHost(boolean requiresToken) {
 		if (this.hostMode) {
 			return;
@@ -341,15 +374,25 @@ public final class P2PManager {
 			return;
 		}
 		this.pendingOffer = null;
-		startMemberProxyAndHello(requiresToken);
+		async(new Runnable() {
+			@Override
+			public void run() {
+				P2PManager.this.startMemberProxyAndHello(requiresToken);
+			}
+		});
 	}
 
 	/** The player typed a token: retry a pending offer, if any. */
 	public void onTokenProvided() {
-		if (this.pendingOffer != null && !this.hostMode && this.enabled) {
-			P2PMessage offer = this.pendingOffer;
+		if (this.pendingOffer != null && !this.hostMode) {
+			final P2PMessage offer = this.pendingOffer;
 			this.pendingOffer = null;
-			startMemberProxyAndHello(offer.isTokenRequired());
+			async(new Runnable() {
+				@Override
+				public void run() {
+					P2PManager.this.startMemberProxyAndHello(offer.isTokenRequired());
+				}
+			});
 		}
 	}
 
