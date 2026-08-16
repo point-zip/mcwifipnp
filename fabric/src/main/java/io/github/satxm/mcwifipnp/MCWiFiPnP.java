@@ -88,7 +88,17 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 												manager.onTokenProvided();
 												manager.onMemberConnectRequested();
 												return 1;
-											}))));
+											})))
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("status")
+									.executes(ctx -> {
+										ctx.getSource().sendFeedback(
+												net.minecraft.network.chat.Component.literal("P2P: ").append(
+														io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance()
+																.isMemberEnabled()
+																		? net.minecraft.network.chat.CommonComponents.OPTION_ON
+																		: net.minecraft.network.chat.CommonComponents.OPTION_OFF));
+										return 1;
+									})));
 				});
 
 		// P2P: receive host-to-member control messages, and set the shared handler

@@ -7,6 +7,9 @@ import java.net.Socket;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import computer.iroh.BiStream;
 import computer.iroh.Connection;
 import computer.iroh.EndpointAddr;
@@ -29,6 +32,8 @@ import computer.iroh.PathSnapshot;
  * through the {@link P2PHandler}; this class contains no Minecraft types.
  */
 public final class P2PManager {
+
+	private static final Logger LOGGER = LogManager.getLogger("mcwifipnp.p2p");
 
 	private static final String LOCAL_PROXY_HOST = "127.0.0.1";
 
@@ -131,6 +136,7 @@ public final class P2PManager {
 		}
 		this.hostMode = true;
 		this.serverPort = gameServerPort;
+		LOGGER.info("P2P host side started on game port {}", gameServerPort);
 		this.iroh.init();
 		// Warm up the endpoint (relay registration is asynchronous) in the background
 		// so a later member request does not have to wait for it.
@@ -146,6 +152,7 @@ public final class P2PManager {
 	/** Stop the host side. */
 	public synchronized void stopHost() {
 		this.hostMode = false;
+		LOGGER.info("P2P host side stopped");
 		this.acceptLoopRunning = false;
 		Thread t = this.acceptThread;
 		if (t != null) {
@@ -164,8 +171,11 @@ public final class P2PManager {
 	/** A member joined via the frp path: ask whether they want a direct connection. */
 	public void onMemberJoined(String playerName) {
 		if (!this.enabled || !this.hostMode) {
+			LOGGER.info("P2P: member {} joined but host P2P not active (enabled={}, hostMode={})",
+					playerName, this.enabled, this.hostMode);
 			return;
 		}
+		LOGGER.info("P2P: member {} joined, sending consent request", playerName);
 		P2PHandler h = this.handler;
 		if (h != null) {
 			h.sendToClient(playerName, P2PMessage.consentRequest());
@@ -178,6 +188,7 @@ public final class P2PManager {
 			return;
 		}
 		if (this.tokenRequired && (suppliedToken == null || !suppliedToken.equals(this.token))) {
+			LOGGER.info("P2P: member {} provided a wrong token, denying", playerName);
 			P2PHandler h = this.handler;
 			if (h != null) {
 				h.sendToClient(playerName, P2PMessage.deny());
@@ -186,6 +197,7 @@ public final class P2PManager {
 			return;
 		}
 		this.endpointIdToPlayer.put(extractEndpointId(memberEndpointAddrString), playerName);
+		LOGGER.info("P2P: member {} handshake ok, sending accept", playerName);
 		P2PHandler h = this.handler;
 		if (h != null) {
 			h.sendToClient(playerName, P2PMessage.accept(this.iroh.getEndpointAddrString()));
@@ -231,6 +243,7 @@ public final class P2PManager {
 		try {
 			BiStream stream = KtBridge.acceptBi(conn);
 			String playerName = this.endpointIdToPlayer.get(remoteId);
+			LOGGER.info("P2P: host accepted iroh stream from {}", playerName);
 			if (playerName == null) {
 				// Unknown peer: close the stream.
 				KtBridge.connectionClose(conn);
@@ -307,6 +320,7 @@ public final class P2PManager {
 			return;
 		}
 		this.memberRequesting = true;
+		LOGGER.info("P2P: member requests a direct connection from the host");
 		P2PHandler h = this.handler;
 		if (h != null) {
 			h.sendToServer(P2PMessage.requestHolepunch());
@@ -340,12 +354,14 @@ public final class P2PManager {
 		}
 		if (!this.enabled) {
 			// Host has P2P switched off: tell the member so they get feedback.
+			LOGGER.info("P2P: member {} requested a connection but host P2P is off", playerName);
 			P2PHandler h = this.handler;
 			if (h != null) {
 				h.sendToClient(playerName, P2PMessage.deny());
 			}
 			return;
 		}
+		LOGGER.info("P2P: member {} accepted/requested, sending offer", playerName);
 		async(new Runnable() {
 			@Override
 			public void run() {
@@ -364,6 +380,7 @@ public final class P2PManager {
 			return;
 		}
 		this.memberRequesting = false;
+		LOGGER.info("P2P: received offer from host (tokenRequired={})", requiresToken);
 		if (requiresToken && (this.token == null || this.token.isEmpty())) {
 			// Wait for the player to provide a token via /p2p token.
 			this.pendingOffer = P2PMessage.offer(true);
@@ -421,6 +438,7 @@ public final class P2PManager {
 			return;
 		}
 		this.memberHostAddrString = hostEndpointAddrString;
+		LOGGER.info("P2P: received accept from host, dialing");
 		Thread dialThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -434,10 +452,12 @@ public final class P2PManager {
 	private void dialHost(String hostEndpointAddrString) {
 		try {
 			EndpointAddr hostAddr = IrohEndpointManager.parseEndpointAddr(hostEndpointAddrString);
+			LOGGER.info("P2P: connecting iroh to host endpoint");
 			Connection conn = KtBridge.connect(this.iroh.getEndpoint(), hostAddr,
 					IrohEndpointManager.ALPN.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 			BiStream stream = KtBridge.openBi(conn);
 			this.memberBiStream = stream;
+			LOGGER.info("P2P: iroh connection established, notifying host");
 			// Push a marker byte so the host's acceptBi returns (QUIC RFC 9000 does
 			// not notify the peer of a new stream until a frame is sent). The host
 			// consumes this byte; the game data stream stays clean.
@@ -450,6 +470,7 @@ public final class P2PManager {
 			}
 			P2PManager.this.acceptLocalClients();
 		} catch (Throwable t) {
+			LOGGER.warn("P2P: dial failed: {}", t.toString());
 			P2PHandler h = this.handler;
 			if (h != null) {
 				h.notify("mcwifipnp.p2p.member_dial_failed");
@@ -470,8 +491,11 @@ public final class P2PManager {
 	public void onSwitchReadyFromHost(int ignoredProxyPort) {
 		ServerSocket proxy = this.memberProxyServer;
 		if (proxy == null) {
+			LOGGER.warn("P2P: switch-ready received but no local proxy is open");
 			return;
 		}
+		LOGGER.info("P2P: switch-ready, reconnecting game client to local proxy port {}",
+				proxy.getLocalPort());
 		P2PHandler h = this.handler;
 		if (h != null) {
 			h.requestReconnect(LOCAL_PROXY_HOST, proxy.getLocalPort());
@@ -509,6 +533,7 @@ public final class P2PManager {
 
 	/** serverbound: a message arrived from a connected member. */
 	public void handleServerbound(String playerName, P2PMessage message) {
+		LOGGER.debug("P2P: serverbound message from {}: type={}", playerName, message.getType());
 		switch (message.getType()) {
 			case P2PMessage.TYPE_HELLO:
 				this.onHelloFromMember(playerName, message.getEndpointAddr(), message.getToken());
@@ -531,6 +556,7 @@ public final class P2PManager {
 
 	/** clientbound: a message arrived from the host. */
 	public void handleClientbound(P2PMessage message) {
+		LOGGER.debug("P2P: clientbound message type={}", message.getType());
 		switch (message.getType()) {
 			case P2PMessage.TYPE_CONSENT_REQUEST:
 				this.onConsentRequest();

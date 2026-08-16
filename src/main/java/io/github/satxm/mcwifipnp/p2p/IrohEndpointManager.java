@@ -27,6 +27,8 @@ public final class IrohEndpointManager {
 
 	private Endpoint endpoint;
 	private String bindAddr;
+	/** Custom relay URL; null/empty means the default iroh relay network. */
+	private volatile String relayUrl;
 
 	/** Create the endpoint. Idempotent: repeated calls keep the existing endpoint. */
 	public synchronized void init() {
@@ -36,8 +38,40 @@ public final class IrohEndpointManager {
 		byte[] secretKey = KtBridge.generateSecretKey();
 		List<byte[]> alpns = new ArrayList<byte[]>();
 		alpns.add(ALPN.getBytes(StandardCharsets.UTF_8));
-		RelayMode mode = KtBridge.relayModeDefault();
+		RelayMode mode = buildRelayMode();
 		this.endpoint = KtBridge.bindEndpoint(alpns, mode, secretKey, this.bindAddr);
+	}
+
+	/**
+	 * Set a custom relay URL (e.g. a self-hosted iroh-relay). Call before
+	 * {@link #init()}. Null/empty restores the default iroh relay network.
+	 */
+	public synchronized void setRelayUrl(String relayUrl) {
+		String normalized = relayUrl == null ? "" : relayUrl.trim();
+		if (!normalized.equals(this.relayUrl)) {
+			this.relayUrl = normalized;
+			// A relay change requires a fresh endpoint.
+			this.shutdown();
+		}
+	}
+
+	public String getRelayUrl() {
+		return this.relayUrl;
+	}
+
+	private RelayMode buildRelayMode() {
+		String url = this.relayUrl;
+		if (url == null || url.isEmpty()) {
+			return KtBridge.relayModeDefault();
+		}
+		List<String> urls = new ArrayList<String>();
+		for (String part : url.split(",")) {
+			String trimmed = part.trim();
+			if (!trimmed.isEmpty()) {
+				urls.add(trimmed);
+			}
+		}
+		return KtBridge.relayModeCustomFromUrls(urls);
 	}
 
 	/** Bind the UDP socket to a specific local address (e.g. 127.0.0.1 for tests). Null = ephemeral. */
