@@ -207,6 +207,11 @@ public final class P2PManager {
 				KtBridge.connectionClose(conn);
 				return;
 			}
+			// The member pushes a single marker byte so that the opened stream
+			// materializes on this side (QUIC RFC 9000 only notifies the peer of a
+			// new stream when a frame is actually sent). Consume it to keep the
+			// game data stream clean.
+			KtBridge.read(stream.recv(), 1);
 			// Bridge the stream to the local game server port.
 			Socket serverSocket = new Socket();
 			serverSocket.connect(new InetSocketAddress(LOCAL_PROXY_HOST, this.serverPort), 5000);
@@ -314,6 +319,10 @@ public final class P2PManager {
 					IrohEndpointManager.ALPN.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 			BiStream stream = KtBridge.openBi(conn);
 			this.memberBiStream = stream;
+			// Push a marker byte so the host's acceptBi returns (QUIC RFC 9000 does
+			// not notify the peer of a new stream until a frame is sent). The host
+			// consumes this byte; the game data stream stays clean.
+			KtBridge.writeAll(stream.send(), new byte[] { (byte) 0x00 });
 			// Signal the host that we are ready; the host answers with SWITCH_READY
 			// once its side of the tunnel is connected to the game server.
 			P2PHandler h = this.handler;
