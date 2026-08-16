@@ -15,14 +15,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
 /**
- * /p2p enable|disable|token &lt;value|none&gt;|status
+ * Host-side P2P command, registered as /p2phost so it never collides with the
+ * member-side /p2p client command tree (an OP'd member would otherwise hit the
+ * server command instead of their own, and could even change the host's config).
  *
- * Controls P2P hole punching. The host sets a token with /p2p token to require
- * members to know it; members provide their token with /p2p token &lt;value&gt;.
+ * /p2phost enable|disable|token &lt;value|none&gt;|status
  */
 public class P2PCommand {
 	public static void register(CommandDispatcher<CommandSourceStack> commandDispatcher) {
-		LiteralArgumentBuilder<CommandSourceStack> cmdBuilder = Commands.literal("p2p")
+		LiteralArgumentBuilder<CommandSourceStack> cmdBuilder = Commands.literal("p2phost")
 			.requires(Commands.hasPermission(Commands.LEVEL_OWNERS));
 
 		cmdBuilder = cmdBuilder

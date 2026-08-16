@@ -75,5 +75,7 @@
   "mcwifipnp.gui.P2PToken.hint": "Leave empty for no token",
   "mcwifipnp.gui.P2PToken.info": "Require members to enter this token before they can establish a direct P2P connection. Leave empty to allow anyone.",
   "mcwifipnp.p2p.host_started": "P2P hole punching is enabled. Members who join will be asked if they want a direct connection.",
-  "mcwifipnp.p2p.host_off": "P2P hole punching is off. Members will connect through the relay as usual."
+  "mcwifipnp.p2p.host_off": "P2P hole punching is off. Members will connect through the relay as usual.",
+  "mcwifipnp.p2p.switch_failed": "P2P: the local connection is not ready yet, staying on the relay. Try /p2p connect again in a moment.",
+  "mcwifipnp.p2p.connecting": "P2P: establishing a direct connection..."
 }

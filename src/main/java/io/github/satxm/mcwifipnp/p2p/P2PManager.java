@@ -426,9 +426,19 @@ public final class P2PManager {
 		try {
 			this.iroh.init();
 			this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
+			// Close any stale proxy from an earlier attempt before binding a fresh one.
+			ServerSocket oldProxy = this.memberProxyServer;
+			if (oldProxy != null) {
+				try {
+					oldProxy.close();
+				} catch (IOException e) {
+					// ignore
+				}
+			}
 			ServerSocket proxy = new ServerSocket();
 			proxy.bind(new InetSocketAddress(LOCAL_PROXY_HOST, 0));
 			this.memberProxyServer = proxy;
+			LOGGER.info("P2P: member proxy bound on 127.0.0.1:{}", proxy.getLocalPort());
 			P2PHandler h = this.handler;
 			if (h != null) {
 				h.sendToServer(P2PMessage.hello(requiresToken ? this.token : null, this.iroh.getEndpointAddrString()));
@@ -448,17 +458,33 @@ public final class P2PManager {
 		}
 		this.memberHostAddrString = hostEndpointAddrString;
 		LOGGER.info("P2P: received accept from host, dialing");
-		Thread dialThread = new Thread(new Runnable() {
+		// Retry a few times: relay-based hole punching is flaky and the first
+		// attempt often times out while NAT mappings warm up.
+		async(new Runnable() {
 			@Override
 			public void run() {
-				dialHost(hostEndpointAddrString);
+				for (int attempt = 1; attempt <= 3; attempt++) {
+					if (P2PManager.this.dialHostOnce(hostEndpointAddrString)) {
+						return;
+					}
+					LOGGER.warn("P2P: dial attempt {} failed, retrying in 3s", attempt);
+					try {
+						Thread.sleep(3000L);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+				}
+				P2PHandler h = P2PManager.this.handler;
+				if (h != null) {
+					h.notify("mcwifipnp.p2p.member_dial_failed");
+				}
 			}
-		}, "MCWiFiPnP_P2P-dial");
-		dialThread.setDaemon(true);
-		dialThread.start();
+		});
 	}
 
-	private void dialHost(String hostEndpointAddrString) {
+	/** One dial attempt. Returns true on success (stream open + tunnel ready sent). */
+	private boolean dialHostOnce(String hostEndpointAddrString) {
 		try {
 			EndpointAddr hostAddr = IrohEndpointManager.parseEndpointAddr(hostEndpointAddrString);
 			LOGGER.info("P2P: connecting iroh to host endpoint");
@@ -478,12 +504,10 @@ public final class P2PManager {
 				h.sendToServer(P2PMessage.tunnelReady());
 			}
 			P2PManager.this.acceptLocalClients();
+			return true;
 		} catch (Throwable t) {
 			LOGGER.warn("P2P: dial failed: {}", t.toString());
-			P2PHandler h = this.handler;
-			if (h != null) {
-				h.notify("mcwifipnp.p2p.member_dial_failed");
-			}
+			return false;
 		}
 	}
 

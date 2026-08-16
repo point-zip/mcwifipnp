@@ -75,5 +75,7 @@
   "mcwifipnp.gui.P2PToken.hint": "留空表示不要求令牌",
   "mcwifipnp.gui.P2PToken.info": "成员建立 P2P 直连前必须输入此令牌。留空则任何人都可以打洞直连。",
   "mcwifipnp.p2p.host_started": "P2P 打洞已开启。成员加入时会被询问是否建立直连。",
-  "mcwifipnp.p2p.host_off": "P2P 打洞未开启。成员将照常通过中转连接。"
+  "mcwifipnp.p2p.host_off": "P2P 打洞未开启。成员将照常通过中转连接。",
+  "mcwifipnp.p2p.switch_failed": "P2P：本地直连通道尚未就绪，继续使用中转。稍后可再输 /p2p connect。",
+  "mcwifipnp.p2p.connecting": "P2P：正在建立直连..."
 }

@@ -44,7 +44,13 @@ public final class P2PHandlerImpl implements P2PHandler {
 		// Member side: drop the frp connection and reconnect through the local P2P
 		// proxy, which forwards to the host over the iroh stream. Must run on the
 		// render thread (ConnectScreen.startConnecting touches the screen stack).
+		// Probe the local proxy first so we never hang on a stale port.
 		MCWiFiPnPUnit.LOGGER.info("P2P: reconnecting the game client to {}:{}", host, port);
+		if (!probeLocal(host, port)) {
+			MCWiFiPnPUnit.LOGGER.warn("P2P: local proxy {}:{} not reachable, staying on the relay", host, port);
+			notify("mcwifipnp.p2p.switch_failed");
+			return;
+		}
 		final Minecraft mc = this.minecraft;
 		mc.execute(() -> {
 			Connection connection = mc.getConnection() != null ? mc.getConnection().getConnection() : null;
@@ -56,6 +62,16 @@ public final class P2PHandlerImpl implements P2PHandler {
 			ConnectScreen.startConnecting(mc.gui.screen(), mc, address, serverData, false,
 					new TransferState(java.util.Map.of(), java.util.Map.of(), false));
 		});
+	}
+
+	/** Quick TCP probe: is something listening on host:port? */
+	private static boolean probeLocal(String host, int port) {
+		try (java.net.Socket socket = new java.net.Socket()) {
+			socket.connect(new java.net.InetSocketAddress(host, port), 1000);
+			return true;
+		} catch (java.io.IOException e) {
+			return false;
+		}
 	}
 
 	@Override
