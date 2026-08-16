@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import io.github.satxm.mcwifipnp.network.P2PHandlerImpl;
@@ -29,6 +30,11 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 						.handleServerbound(context.player().getGameProfile().name(), payload.asMessage());
 			});
 		});
+
+		// P2P: when a player joins (over the frp path), ask them about a direct connection.
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			P2PManager.getInstance().onMemberJoined(handler.getPlayer().getGameProfile().name());
+		});
 	}
 
 	@Override
@@ -36,6 +42,31 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			MCWiFiPnPUnit.registerCommands(dispatcher, false);
 		});
+
+		// Member-side P2P commands work without OP (client command dispatcher).
+		net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback.EVENT
+				.register((dispatcher, registryAccess) -> {
+					dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("p2p")
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("allow").executes(ctx -> {
+								io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance().onConsentAccepted();
+								return 1;
+							}))
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("deny").executes(ctx -> {
+								io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance().onConsentDenied();
+								return 1;
+							}))
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("token")
+									.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("value",
+											com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+											.executes(ctx -> {
+												io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance().setToken(
+														com.mojang.brigadier.arguments.StringArgumentType
+																.getString(ctx, "value"));
+												io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance()
+														.onTokenProvided();
+												return 1;
+											}))));
+				});
 
 		// P2P: receive host-to-member control messages, and set the shared handler
 		// that both roles (host and member) use to send messages.

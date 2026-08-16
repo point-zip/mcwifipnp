@@ -68,5 +68,10 @@
   "mcwifipnp.p2p.member_dial_failed": "P2P: could not reach the host directly, staying on the relay connection.",
   "mcwifipnp.p2p.token_set": "P2P token set to %s",
   "mcwifipnp.p2p.token_none": "none",
-  "mcwifipnp.p2p.network_error": "P2P network error"
+  "mcwifipnp.p2p.network_error": "P2P network error",
+  "mcwifipnp.p2p.consent_ask": "The host offers a direct P2P connection (lower latency). Type §b/p2p allow§f to accept, or §b/p2p deny§f to stay on the relay connection.",
+  "mcwifipnp.p2p.consent_declined": "%s declined the direct P2P connection.",
+  "mcwifipnp.gui.P2PToken": "P2P Token",
+  "mcwifipnp.gui.P2PToken.hint": "Leave empty for no token",
+  "mcwifipnp.gui.P2PToken.info": "Require members to enter this token before they can establish a direct P2P connection. Leave empty to allow anyone."
 }

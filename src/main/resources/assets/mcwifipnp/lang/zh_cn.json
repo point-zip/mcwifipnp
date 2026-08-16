@@ -68,5 +68,10 @@
   "mcwifipnp.p2p.member_dial_failed": "P2P：无法直连房主，继续使用中转连接。",
   "mcwifipnp.p2p.token_set": "P2P 令牌已设为 %s",
   "mcwifipnp.p2p.token_none": "无",
-  "mcwifipnp.p2p.network_error": "P2P 网络错误"
+  "mcwifipnp.p2p.network_error": "P2P 网络错误",
+  "mcwifipnp.p2p.consent_ask": "房主邀请你建立 P2P 直连（延迟更低）。输入 §b/p2p allow§f 同意，或 §b/p2p deny§f 拒绝（继续走中转连接）",
+  "mcwifipnp.p2p.consent_declined": "%s 拒绝了 P2P 直连",
+  "mcwifipnp.gui.P2PToken": "P2P 令牌",
+  "mcwifipnp.gui.P2PToken.hint": "留空表示不要求令牌",
+  "mcwifipnp.gui.P2PToken.info": "成员建立 P2P 直连前必须输入此令牌。留空则任何人都可以打洞直连。"
 }

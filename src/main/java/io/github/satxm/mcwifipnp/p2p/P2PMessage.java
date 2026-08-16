@@ -39,6 +39,10 @@ public final class P2PMessage {
 	public static final int TYPE_TUNNEL_READY = 5;
 	/** host -&gt; member: reconnect to 127.0.0.1:proxyPort. */
 	public static final int TYPE_SWITCH_READY = 6;
+	/** host -&gt; member: ask whether the member wants a direct P2P connection. */
+	public static final int TYPE_CONSENT_REQUEST = 7;
+	/** member -&gt; host: yes, proceed with hole punching. */
+	public static final int TYPE_CONSENT_ACCEPT = 8;
 
 	private final int type;
 	/** offer: whether a token is required. */
@@ -82,6 +86,14 @@ public final class P2PMessage {
 		return new P2PMessage(TYPE_SWITCH_READY, false, null, null, proxyPort);
 	}
 
+	public static P2PMessage consentRequest() {
+		return new P2PMessage(TYPE_CONSENT_REQUEST, false, null, null, 0);
+	}
+
+	public static P2PMessage consentAccept() {
+		return new P2PMessage(TYPE_CONSENT_ACCEPT, false, null, null, 0);
+	}
+
 	public int getType() {
 		return this.type;
 	}
@@ -122,6 +134,8 @@ public final class P2PMessage {
 					break;
 				case TYPE_TUNNEL_READY:
 				case TYPE_DENY:
+				case TYPE_CONSENT_REQUEST:
+				case TYPE_CONSENT_ACCEPT:
 					break;
 				case TYPE_SWITCH_READY:
 					out.writeInt(this.proxyPort);
@@ -161,6 +175,10 @@ public final class P2PMessage {
 					return tunnelReady();
 				case TYPE_DENY:
 					return deny();
+				case TYPE_CONSENT_REQUEST:
+					return consentRequest();
+				case TYPE_CONSENT_ACCEPT:
+					return consentAccept();
 				case TYPE_SWITCH_READY:
 					return switchReady(in.readInt());
 				default:

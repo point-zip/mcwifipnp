@@ -17,6 +17,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import io.github.satxm.mcwifipnp.commands.P2PClientCommand;
 import io.github.satxm.mcwifipnp.network.P2PHandlerImpl;
 import io.github.satxm.mcwifipnp.network.P2PPayload;
 import io.github.satxm.mcwifipnp.network.P2PSender;
@@ -27,6 +28,20 @@ public class MCWiFiPnP {
 	public MCWiFiPnP(IEventBus modEventBus) {
 		NeoForge.EVENT_BUS.register(this);
 		modEventBus.addListener(this::onRegisterPayloadHandlers);
+		NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+		NeoForge.EVENT_BUS.addListener(this::onRegisterClientCommands);
+	}
+
+	/** When a player joins (over the frp path), ask them about a direct connection. */
+	private void onPlayerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+		if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+			P2PManager.getInstance().onMemberJoined(serverPlayer.getGameProfile().name());
+		}
+	}
+
+	/** Member-side P2P commands (allow/deny/token), no OP required. */
+	private void onRegisterClientCommands(net.neoforged.neoforge.client.event.RegisterClientCommandsEvent event) {
+		P2PClientCommand.register(event.getDispatcher());
 	}
 
 	@SubscribeEvent

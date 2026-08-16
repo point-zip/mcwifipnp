@@ -69,6 +69,14 @@ public class P2PE2ETest {
 		@Override public void sendToClient(String playerName, P2PMessage message) {
 			System.out.println("[bridge] " + name + " -> member: " + message);
 			peer.handleClientbound(message);
+			// auto-consent: the member accepts the direct connection offer
+			if (message.getType() == P2PMessage.TYPE_CONSENT_REQUEST) {
+				new Thread(() -> {
+					try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+					System.out.println("[test] member auto-accepts consent");
+					peer.onConsentAccepted();
+				}).start();
+			}
 		}
 		@Override public void sendToServer(P2PMessage message) {
 			System.out.println("[bridge] " + name + " -> host: " + message);

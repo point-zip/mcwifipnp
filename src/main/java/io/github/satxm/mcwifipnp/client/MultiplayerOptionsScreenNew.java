@@ -70,14 +70,17 @@ public class MultiplayerOptionsScreenNew extends Screen
 	private @Nullable EditBox portEdit;
 	private @Nullable EditBox motdEdit;
 	private @Nullable EditBox maxPlayersEdit;
+	private @Nullable EditBox p2pTokenEdit;
 	private @Nullable StringWidget portLabel;
 	private @Nullable StringWidget motdLabel;
 	private @Nullable StringWidget maxPlayersLabel;
+	private @Nullable StringWidget p2pTokenLabel;
 	private DifficultyButtons difficultyButtons;
 
 	private final boolean initialUseUPnP;
 	private final boolean initialGetPublicIP;
 	private final boolean initialEnableP2P;
+	private final @Nullable String initialP2PToken;
 	private final String initialMotd;
 	private final int initialPort;
 	private final MinecraftServer.MultiplayerScope initialMultiplayerScope;
@@ -115,6 +118,7 @@ public class MultiplayerOptionsScreenNew extends Screen
 		this.initialUseUPnP = cfg.useUPnP;
 		this.initialGetPublicIP = cfg.getPublicIP;
 		this.initialEnableP2P = cfg.enableP2P;
+		this.initialP2PToken = cfg.p2pToken;
 		this.initialMultiplayerScope = singleplayerServer.getMultiplayerScope();
 		this.initialallowGuestCommands = cfg.allowGuestCommands;
 	}
@@ -152,8 +156,9 @@ public class MultiplayerOptionsScreenNew extends Screen
 			if (cfg.getPublicIP ^ initialGetPublicIP) {
 				GetPublicIP(singleplayerServer);
 			}
-			if (cfg.enableP2P ^ initialEnableP2P) {
-				// P2P toggle changed while published: (re)start or stop hole punching
+			if (cfg.enableP2P ^ initialEnableP2P
+					|| (cfg.p2pToken == null ? initialP2PToken != null : !cfg.p2pToken.equals(initialP2PToken))) {
+				// P2P toggle or token changed while published: (re)start or stop hole punching
 				P2PManager p2p = P2PManager.getInstance();
 				p2p.setEnabled(cfg.enableP2P);
 				p2p.setToken(cfg.p2pToken);
@@ -399,6 +404,23 @@ public class MultiplayerOptionsScreenNew extends Screen
 				.create(Component.translatable("mcwifipnp.gui.P2P"), (cycleButton, enableP2P) -> {
 					cfg.enableP2P = enableP2P;
 				}));
+
+		// P2P token field (leave empty for no token)
+		p2pTokenEdit = new EditBox(this.font, Component.translatable("mcwifipnp.gui.P2PToken"));
+		if (cfg.p2pToken != null) {
+			p2pTokenEdit.setValue(cfg.p2pToken);
+		}
+		p2pTokenEdit.setHint(Component.translatable("mcwifipnp.gui.P2PToken.hint"));
+		p2pTokenEdit.setResponder(value -> {
+			String trimmed = value.trim();
+			cfg.p2pToken = trimmed.isEmpty() ? null : trimmed;
+		});
+		p2pTokenEdit.setTooltip(Tooltip.create(Component.translatable("mcwifipnp.gui.P2PToken.info")));
+		LinearLayout p2pTokenRow = LinearLayout.vertical().spacing(4);
+		p2pTokenLabel = p2pTokenRow
+				.addChild(new StringWidget(Component.translatable("mcwifipnp.gui.P2PToken"), this.font));
+		p2pTokenRow.addChild(p2pTokenEdit);
+		rowHelper.addChild(p2pTokenRow);
 
 		// Get Public IP button
 		rowHelper.addChild(CycleButton.onOffBuilder(cfg.getPublicIP)

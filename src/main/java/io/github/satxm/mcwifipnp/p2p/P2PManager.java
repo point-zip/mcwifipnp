@@ -55,6 +55,7 @@ public final class P2PManager {
 	private volatile BiStream memberBiStream;
 	private volatile P2PMessage pendingOffer;
 	private volatile String memberHostAddrString;
+	private volatile boolean pendingConsent;
 
 	// host side accept loop
 	private volatile Thread acceptThread;
@@ -130,16 +131,14 @@ public final class P2PManager {
 		}
 	}
 
-	/** A member joined via the frp path: offer hole punching. */
+	/** A member joined via the frp path: ask whether they want a direct connection. */
 	public void onMemberJoined(String playerName) {
 		if (!this.enabled || !this.hostMode) {
 			return;
 		}
-		this.iroh.init();
-		this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
 		P2PHandler h = this.handler;
 		if (h != null) {
-			h.sendToClient(playerName, P2PMessage.offer(this.tokenRequired));
+			h.sendToClient(playerName, P2PMessage.consentRequest());
 		}
 	}
 
@@ -247,12 +246,54 @@ public final class P2PManager {
 		this.iroh.init();
 	}
 
-	/** The host offered hole punching. */
-	public synchronized void onOfferFromHost(boolean requiresToken) {
+	/** The host asked whether we want a direct connection. Ask the player. */
+	public synchronized void onConsentRequest() {
 		if (this.hostMode) {
 			return;
 		}
-		if (!this.enabled) {
+		this.pendingConsent = true;
+		P2PHandler h = this.handler;
+		if (h != null) {
+			h.notify("mcwifipnp.p2p.consent_ask");
+		}
+	}
+
+	/** The player accepted (/p2p allow): tell the host to proceed. */
+	public synchronized void onConsentAccepted() {
+		if (this.hostMode || !this.pendingConsent) {
+			return;
+		}
+		this.pendingConsent = false;
+		P2PHandler h = this.handler;
+		if (h != null) {
+			h.sendToServer(P2PMessage.consentAccept());
+		}
+	}
+
+	/** The player declined (/p2p deny): stay on the frp path. */
+	public synchronized void onConsentDenied() {
+		if (this.hostMode) {
+			return;
+		}
+		this.pendingConsent = false;
+	}
+
+	/** The member accepted: offer hole punching to them. */
+	public void onConsentAcceptedFromMember(String playerName) {
+		if (!this.hostMode) {
+			return;
+		}
+		this.iroh.init();
+		this.iroh.awaitOnline(IrohEndpointManager.DEFAULT_ONLINE_TIMEOUT_MS);
+		P2PHandler h = this.handler;
+		if (h != null) {
+			h.sendToClient(playerName, P2PMessage.offer(this.tokenRequired));
+		}
+	}
+
+	/** The host offered hole punching. */
+	public synchronized void onOfferFromHost(boolean requiresToken) {
+		if (this.hostMode) {
 			return;
 		}
 		if (requiresToken && (this.token == null || this.token.isEmpty())) {
@@ -394,6 +435,9 @@ public final class P2PManager {
 			case P2PMessage.TYPE_HELLO:
 				this.onHelloFromMember(playerName, message.getEndpointAddr(), message.getToken());
 				break;
+			case P2PMessage.TYPE_CONSENT_ACCEPT:
+				this.onConsentAcceptedFromMember(playerName);
+				break;
 			case P2PMessage.TYPE_TUNNEL_READY:
 				// The member's iroh stream is up; nothing further is needed here,
 				// the accept loop already bridges the stream and sends SWITCH_READY.
@@ -406,6 +450,9 @@ public final class P2PManager {
 	/** clientbound: a message arrived from the host. */
 	public void handleClientbound(P2PMessage message) {
 		switch (message.getType()) {
+			case P2PMessage.TYPE_CONSENT_REQUEST:
+				this.onConsentRequest();
+				break;
 			case P2PMessage.TYPE_OFFER:
 				this.onOfferFromHost(message.isTokenRequired());
 				break;
@@ -448,6 +495,7 @@ public final class P2PManager {
 		this.endpointIdToPlayer.clear();
 		this.pendingOffer = null;
 		this.memberHostAddrString = null;
+		this.pendingConsent = false;
 		this.iroh.shutdown();
 	}
 
