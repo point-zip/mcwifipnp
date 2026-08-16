@@ -7,6 +7,7 @@ import io.github.satxm.mcwifipnp.MCWiFiPnPUnit;
 import io.github.satxm.mcwifipnp.OnlineMode;
 import io.github.satxm.mcwifipnp.commands.IpCommand;
 import io.github.satxm.mcwifipnp.network.UPnPModule;
+import io.github.satxm.mcwifipnp.p2p.P2PManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -76,6 +77,7 @@ public class MultiplayerOptionsScreenNew extends Screen
 
 	private final boolean initialUseUPnP;
 	private final boolean initialGetPublicIP;
+	private final boolean initialEnableP2P;
 	private final String initialMotd;
 	private final int initialPort;
 	private final MinecraftServer.MultiplayerScope initialMultiplayerScope;
@@ -112,6 +114,7 @@ public class MultiplayerOptionsScreenNew extends Screen
 		this.initialMotd = cfg.motd;
 		this.initialUseUPnP = cfg.useUPnP;
 		this.initialGetPublicIP = cfg.getPublicIP;
+		this.initialEnableP2P = cfg.enableP2P;
 		this.initialMultiplayerScope = singleplayerServer.getMultiplayerScope();
 		this.initialallowGuestCommands = cfg.allowGuestCommands;
 	}
@@ -129,6 +132,14 @@ public class MultiplayerOptionsScreenNew extends Screen
 			if (cfg.multiplayerScope == MinecraftServer.MultiplayerScope.LAN) {
 				UPnPModule.startIfEnabled(singleplayerServer, cfg);
 				GetPublicIP(singleplayerServer);
+				if (cfg.enableP2P) {
+					P2PManager p2p = P2PManager.getInstance();
+					p2p.setEnabled(true);
+					p2p.setToken(cfg.p2pToken);
+					p2p.setTokenRequired(cfg.p2pToken != null);
+					p2p.setAutoSwitch(cfg.p2pAutoSwitch);
+					p2p.startHost(singleplayerServer.getPort());
+				}
 			}
 		}
 
@@ -140,6 +151,19 @@ public class MultiplayerOptionsScreenNew extends Screen
 			}
 			if (cfg.getPublicIP ^ initialGetPublicIP) {
 				GetPublicIP(singleplayerServer);
+			}
+			if (cfg.enableP2P ^ initialEnableP2P) {
+				// P2P toggle changed while published: (re)start or stop hole punching
+				P2PManager p2p = P2PManager.getInstance();
+				p2p.setEnabled(cfg.enableP2P);
+				p2p.setToken(cfg.p2pToken);
+				p2p.setTokenRequired(cfg.p2pToken != null);
+				p2p.setAutoSwitch(cfg.p2pAutoSwitch);
+				if (cfg.enableP2P) {
+					p2p.startHost(singleplayerServer.getPort());
+				} else {
+					p2p.stopHost();
+				}
 			}
 		}
 		cfg.applyTo(singleplayerServer);
@@ -369,6 +393,13 @@ public class MultiplayerOptionsScreenNew extends Screen
 					cfg.useUPnP = useUPnP;
 				}));
 
+		// P2P hole punching button
+		rowHelper.addChild(CycleButton.onOffBuilder(cfg.enableP2P)
+				.withTooltip((state) -> Tooltip.create(Component.translatable("mcwifipnp.gui.P2P.info")))
+				.create(Component.translatable("mcwifipnp.gui.P2P"), (cycleButton, enableP2P) -> {
+					cfg.enableP2P = enableP2P;
+				}));
+
 		// Get Public IP button
 		rowHelper.addChild(CycleButton.onOffBuilder(cfg.getPublicIP)
 				.withTooltip((state) -> Tooltip.create(Component.translatable("mcwifipnp.gui.CopyIP.info")))
@@ -465,6 +496,7 @@ public class MultiplayerOptionsScreenNew extends Screen
 		if (server.unpublishServer()) {
 			this.sendPublishMessage(Component.translatable("menu.multiplayerOptions.publish.stopped"));
 			UPnPModule.stop(server);
+			P2PManager.getInstance().stopHost();
 		}
 
 		if (cfg.multiplayerScope != MinecraftServer.MultiplayerScope.OFF) {

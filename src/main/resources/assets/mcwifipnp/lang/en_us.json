@@ -57,5 +57,16 @@
   "options.worldOptions.guest.command_access.tooltip": "Controls whether players that join your world can use commands or not.",
   "options.worldOptions.multiplayer.title": "Multiplayer",
   "editGamerule.inGame.disabled.hardcore.tooltip": "Cannot change game rules in a hardcore world.",
-  "editGamerule.inGame.disabled.tooltip": "Updating game rules requires operator permissions."
+  "editGamerule.inGame.disabled.tooltip": "Updating game rules requires operator permissions.",
+  "mcwifipnp.gui.P2P": "P2P Hole Punching",
+  "mcwifipnp.gui.P2P.info": "Try to establish a direct P2P connection when players join through a relay (frp). If it succeeds, the game reconnects over the direct link; otherwise the relay path is kept.",
+  "mcwifipnp.p2p.switching": "P2P direct connection established, reconnecting...",
+  "mcwifipnp.p2p.need_token": "This world requires a P2P token. Set it with /p2p token <value>",
+  "mcwifipnp.p2p.member_token_rejected": "A player provided an invalid P2P token.",
+  "mcwifipnp.p2p.member_denied": "P2P rejected by the host, staying on the relay connection.",
+  "mcwifipnp.p2p.member_proxy_failed": "P2P: could not open the local proxy port.",
+  "mcwifipnp.p2p.member_dial_failed": "P2P: could not reach the host directly, staying on the relay connection.",
+  "mcwifipnp.p2p.token_set": "P2P token set to %s",
+  "mcwifipnp.p2p.token_none": "none",
+  "mcwifipnp.p2p.network_error": "P2P network error"
 }

@@ -3,6 +3,7 @@ plugins {
   id 'eclipse'
   id 'idea'
   id 'net.minecraftforge.gradle' version '[7.0.17,8)'
+  id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
@@ -51,6 +52,12 @@ dependencies {
   implementation minecraft.dependency("net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
   annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
   annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.1'
+
+  // P2P: iroh bundle (forge uses jarJar via the jarJar config)
+  jarJar(implementation("computer.iroh:iroh:${project.iroh_version}"))
+  jarJar(implementation("org.jetbrains.kotlin:kotlin-stdlib:${project.kotlin_version}"))
+  jarJar(implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:${project.kotlinx_coroutines_version}"))
+  jarJar(implementation("net.java.dev.jna:jna:${project.jna_version}"))
 }
 
 sourceSets {
@@ -58,10 +65,20 @@ sourceSets {
     java {
       srcDir "../src/main/java"
     }
+    kotlin {
+      srcDir "../src/main/kotlin"
+    }
     resources {
       srcDir "../src/main/resources"
       srcDir "src/generated/resources"
     }
+  }
+}
+
+kotlin {
+  compilerOptions {
+    // Kotlin 2.2.x max target is JVM_24; the JVM 25 runtime loads these fine.
+    jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24
   }
 }
 

@@ -62,6 +62,10 @@
 - **Java 25 native access**：JNA 的 `System.load` 在 Java 25 打印 restricted
   方法警告，功能不受影响；spike 用 `--enable-native-access=ALL-UNNAMED` 消除。
   mod 环境（Minecraft 启动器）暂不影响，记录备查。
+- **iroh 绑定要求 Java 21+**：`computer.iroh:iroh:1.1.0` 的 class 字节码 major=65
+  （Java 21）。Java 21 以下的 MC 版本线（1.7.10–1.20.1，Java 8/16/17）无法加载
+  绑定。Phase 6 移植时这些版本要么排除 P2P 功能，要么另找低 JVM 兼容绑定
+  （备选：自编译 iroh-ffi 到低 target，工作量大）。1.20.6+/26.x（Java 21+）无此问题。
 
 ### spike 验证记录（2026-08-16，Windows 11 + JDK 25.0.2）
 

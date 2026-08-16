@@ -9,6 +9,8 @@ import java.nio.file.StandardOpenOption;
 
 import org.apache.logging.log4j.Logger;
 
+import org.jspecify.annotations.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
@@ -52,6 +54,16 @@ public class Config {
 
 	@SerializedName(value = "enable-upnp", alternate = { "UseUPnP" })
 	public boolean useUPnP = true;
+
+	@SerializedName(value = "enable-p2p", alternate = { "EnableP2P" })
+	public boolean enableP2P = false;
+
+	@SerializedName(value = "p2p-token", alternate = { "P2PToken" })
+	@Nullable
+	public String p2pToken = null;
+
+	@SerializedName(value = "p2p-auto-switch", alternate = { "P2PAutoSwitch" })
+	public boolean p2pAutoSwitch = true;
 
 	@SerializedName(value = "online-mode", alternate = { "OnlineMode" })
 	public boolean onlineMode = true;

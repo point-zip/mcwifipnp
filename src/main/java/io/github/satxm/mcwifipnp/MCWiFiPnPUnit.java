@@ -7,6 +7,7 @@ import com.mojang.brigadier.CommandDispatcher;
 
 import io.github.satxm.mcwifipnp.commands.*;
 import io.github.satxm.mcwifipnp.network.UPnPModule;
+import io.github.satxm.mcwifipnp.p2p.P2PManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.commands.BanIpCommands;
@@ -45,6 +46,7 @@ public class MCWiFiPnPUnit {
 		IpCommand.register(cmdDispatcher);
 		OnlineModeCommand.register(cmdDispatcher);
 		UPnPCommand.register(cmdDispatcher);
+		P2PCommand.register(cmdDispatcher);
 
 		// Register missing vanilla server commands on the client-side
 		DeOpCommands.register(cmdDispatcher);
@@ -64,6 +66,7 @@ public class MCWiFiPnPUnit {
 	public static void onServerStopping(MinecraftServer server) {
 		if (!server.isDedicatedServer()) {
 			UPnPModule.stop(server);
+			P2PManager.getInstance().shutdown();
 		}
 	}
 
@@ -72,6 +75,12 @@ public class MCWiFiPnPUnit {
 	 * Only runs on client-side
 	 */
 	public static void onServerStarting(MinecraftServer server) {
+		Config cfg = Config.read(server);
+		P2PManager manager = P2PManager.getInstance();
+		manager.setEnabled(cfg.enableP2P);
+		manager.setToken(cfg.p2pToken);
+		manager.setTokenRequired(cfg.p2pToken != null);
+		manager.setAutoSwitch(cfg.p2pAutoSwitch);
 	}
 
 	public static void enableUUIDFixerOnDedicatedServer() {
