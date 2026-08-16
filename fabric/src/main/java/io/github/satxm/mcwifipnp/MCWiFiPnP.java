@@ -47,6 +47,27 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 		net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback.EVENT
 				.register((dispatcher, registryAccess) -> {
 					dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("p2p")
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("enable")
+									.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("enabled",
+											com.mojang.brigadier.arguments.BoolArgumentType.bool())
+											.executes(ctx -> {
+												io.github.satxm.mcwifipnp.p2p.P2PManager manager = io.github.satxm.mcwifipnp.p2p.P2PManager
+														.getInstance();
+												manager.setMemberEnabled(com.mojang.brigadier.arguments.BoolArgumentType
+														.getBool(ctx, "enabled"));
+												if (manager.isMemberEnabled()) {
+													manager.onMemberConnectRequested();
+												}
+												return 1;
+											})))
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("connect")
+									.executes(ctx -> {
+										io.github.satxm.mcwifipnp.p2p.P2PManager manager = io.github.satxm.mcwifipnp.p2p.P2PManager
+												.getInstance();
+										manager.setMemberEnabled(true);
+										manager.onMemberConnectRequested();
+										return 1;
+									}))
 							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("allow").executes(ctx -> {
 								io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance().onConsentAccepted();
 								return 1;
@@ -59,11 +80,13 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 									.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("value",
 											com.mojang.brigadier.arguments.StringArgumentType.greedyString())
 											.executes(ctx -> {
-												io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance().setToken(
-														com.mojang.brigadier.arguments.StringArgumentType
-																.getString(ctx, "value"));
-												io.github.satxm.mcwifipnp.p2p.P2PManager.getInstance()
-														.onTokenProvided();
+												io.github.satxm.mcwifipnp.p2p.P2PManager manager = io.github.satxm.mcwifipnp.p2p.P2PManager
+														.getInstance();
+												manager.setToken(com.mojang.brigadier.arguments.StringArgumentType
+														.getString(ctx, "value"));
+												manager.setMemberEnabled(true);
+												manager.onTokenProvided();
+												manager.onMemberConnectRequested();
 												return 1;
 											}))));
 				});

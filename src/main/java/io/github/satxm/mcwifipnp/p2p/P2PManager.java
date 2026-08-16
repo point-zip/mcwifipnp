@@ -51,6 +51,8 @@ public final class P2PManager {
 	private volatile boolean enabled;
 
 	// member side state
+	private volatile boolean memberEnabled = true;
+	private volatile boolean memberRequesting;
 	private volatile ServerSocket memberProxyServer;
 	private volatile BiStream memberBiStream;
 	private volatile P2PMessage pendingOffer;
@@ -98,6 +100,19 @@ public final class P2PManager {
 
 	public boolean isAutoSwitch() {
 		return this.autoSwitch;
+	}
+
+	/** Whether the member participates in P2P hole punching at all. Default true. */
+	public void setMemberEnabled(boolean enabled) {
+		this.memberEnabled = enabled;
+		if (!enabled) {
+			this.memberRequesting = false;
+			this.cleanupMemberSide();
+		}
+	}
+
+	public boolean isMemberEnabled() {
+		return this.memberEnabled;
 	}
 
 	/** The shared iroh endpoint manager. */
@@ -248,13 +263,32 @@ public final class P2PManager {
 
 	/** The host asked whether we want a direct connection. Ask the player. */
 	public synchronized void onConsentRequest() {
-		if (this.hostMode) {
+		if (this.hostMode || !this.memberEnabled) {
 			return;
 		}
 		this.pendingConsent = true;
 		P2PHandler h = this.handler;
 		if (h != null) {
 			h.notify("mcwifipnp.p2p.consent_ask");
+		}
+	}
+
+	/**
+	 * The member wants a direct connection right now (from /p2p connect, or
+	 * automatically when P2P is enabled). Tells the host to start hole punching.
+	 */
+	public synchronized void onMemberConnectRequested() {
+		if (this.hostMode || !this.memberEnabled) {
+			return;
+		}
+		// Already in a hole-punching attempt or tunneled: ignore.
+		if (this.memberRequesting || this.memberBiStream != null || this.pendingOffer != null) {
+			return;
+		}
+		this.memberRequesting = true;
+		P2PHandler h = this.handler;
+		if (h != null) {
+			h.sendToServer(P2PMessage.requestHolepunch());
 		}
 	}
 
@@ -296,6 +330,7 @@ public final class P2PManager {
 		if (this.hostMode) {
 			return;
 		}
+		this.memberRequesting = false;
 		if (requiresToken && (this.token == null || this.token.isEmpty())) {
 			// Wait for the player to provide a token via /p2p token.
 			this.pendingOffer = P2PMessage.offer(true);
@@ -438,6 +473,10 @@ public final class P2PManager {
 			case P2PMessage.TYPE_CONSENT_ACCEPT:
 				this.onConsentAcceptedFromMember(playerName);
 				break;
+			case P2PMessage.TYPE_REQUEST_HOLEPUNCH:
+				// The member asked for a direct connection: same as if they accepted.
+				this.onConsentAcceptedFromMember(playerName);
+				break;
 			case P2PMessage.TYPE_TUNNEL_READY:
 				// The member's iroh stream is up; nothing further is needed here,
 				// the accept loop already bridges the stream and sends SWITCH_READY.
@@ -496,6 +535,7 @@ public final class P2PManager {
 		this.pendingOffer = null;
 		this.memberHostAddrString = null;
 		this.pendingConsent = false;
+		this.memberRequesting = false;
 		this.iroh.shutdown();
 	}
 

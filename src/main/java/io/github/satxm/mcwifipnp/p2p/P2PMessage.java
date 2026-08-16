@@ -43,6 +43,8 @@ public final class P2PMessage {
 	public static final int TYPE_CONSENT_REQUEST = 7;
 	/** member -&gt; host: yes, proceed with hole punching. */
 	public static final int TYPE_CONSENT_ACCEPT = 8;
+	/** member -&gt; host: I want a direct connection, start hole punching. */
+	public static final int TYPE_REQUEST_HOLEPUNCH = 9;
 
 	private final int type;
 	/** offer: whether a token is required. */
@@ -94,6 +96,10 @@ public final class P2PMessage {
 		return new P2PMessage(TYPE_CONSENT_ACCEPT, false, null, null, 0);
 	}
 
+	public static P2PMessage requestHolepunch() {
+		return new P2PMessage(TYPE_REQUEST_HOLEPUNCH, false, null, null, 0);
+	}
+
 	public int getType() {
 		return this.type;
 	}
@@ -136,6 +142,7 @@ public final class P2PMessage {
 				case TYPE_DENY:
 				case TYPE_CONSENT_REQUEST:
 				case TYPE_CONSENT_ACCEPT:
+				case TYPE_REQUEST_HOLEPUNCH:
 					break;
 				case TYPE_SWITCH_READY:
 					out.writeInt(this.proxyPort);
@@ -179,6 +186,8 @@ public final class P2PMessage {
 					return consentRequest();
 				case TYPE_CONSENT_ACCEPT:
 					return consentAccept();
+				case TYPE_REQUEST_HOLEPUNCH:
+					return requestHolepunch();
 				case TYPE_SWITCH_READY:
 					return switchReady(in.readInt());
 				default:

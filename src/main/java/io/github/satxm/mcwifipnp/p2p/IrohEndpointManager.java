@@ -45,7 +45,12 @@ public final class IrohEndpointManager {
 		this.bindAddr = addr;
 	}
 
-	/** Block until the endpoint is registered with a relay, or the timeout elapses. Returns success. */
+	/**
+	 * Poll until the endpoint is registered with a relay, or the timeout elapses.
+	 * Returns success. Note: endpoint relay registration is asynchronous; we never
+	 * block on {@code online()} because it has no timeout and can hang forever
+	 * when the relay is slow or unreachable.
+	 */
 	public boolean awaitOnline(long timeoutMillis) {
 		Endpoint ep = this.endpoint;
 		if (ep == null) {
@@ -57,15 +62,10 @@ public final class IrohEndpointManager {
 				return true;
 			}
 			try {
-				KtBridge.endpointOnline(ep);
-				return true;
-			} catch (Throwable t) {
-				try {
-					Thread.sleep(200L);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return false;
-				}
+				Thread.sleep(200L);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return false;
 			}
 		}
 		return false;
