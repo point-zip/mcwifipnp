@@ -42,23 +42,29 @@ public final class P2PHandlerImpl implements P2PHandler {
 	@Override
 	public void requestReconnect(String host, int port) {
 		// Member side: drop the frp connection and reconnect through the local P2P
-		// proxy, which forwards to the host over the iroh stream.
+		// proxy, which forwards to the host over the iroh stream. Must run on the
+		// render thread (ConnectScreen.startConnecting touches the screen stack).
 		MCWiFiPnPUnit.LOGGER.info("P2P: reconnecting the game client to {}:{}", host, port);
-		Connection connection = this.minecraft.getConnection().getConnection();
-		if (connection != null) {
-			connection.disconnect(Component.translatable("mcwifipnp.p2p.switching"));
-		}
-		ServerAddress address = new ServerAddress(host, port);
-		ServerData serverData = new ServerData("P2P", host + ":" + port, ServerData.Type.OTHER);
-		ConnectScreen.startConnecting(this.minecraft.gui.screen(), this.minecraft, address, serverData, false,
-				new TransferState(java.util.Map.of(), java.util.Map.of(), false));
+		final Minecraft mc = this.minecraft;
+		mc.execute(() -> {
+			Connection connection = mc.getConnection() != null ? mc.getConnection().getConnection() : null;
+			if (connection != null) {
+				connection.disconnect(Component.translatable("mcwifipnp.p2p.switching"));
+			}
+			ServerAddress address = new ServerAddress(host, port);
+			ServerData serverData = new ServerData("P2P", host + ":" + port, ServerData.Type.OTHER);
+			ConnectScreen.startConnecting(mc.gui.screen(), mc, address, serverData, false,
+					new TransferState(java.util.Map.of(), java.util.Map.of(), false));
+		});
 	}
 
 	@Override
 	public void notify(String message) {
 		// Show locally without round-tripping through the network; works on both
-		// the host (singleplayer server) and the member side.
-		this.minecraft.gui.hud.getChat().addClientSystemMessage(Component.translatable(message));
+		// the host (singleplayer server) and the member side. Called from
+		// background threads, so dispatch to the render thread before touching UI.
+		final Minecraft mc = this.minecraft;
+		mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(Component.translatable(message)));
 	}
 
 	/** Current game connection (used by the member-side reconnect logic). */

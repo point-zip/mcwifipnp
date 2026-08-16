@@ -143,6 +143,9 @@ public class MultiplayerOptionsScreenNew extends Screen
 					p2p.setTokenRequired(cfg.p2pToken != null);
 					p2p.setAutoSwitch(cfg.p2pAutoSwitch);
 					p2p.startHost(singleplayerServer.getPort());
+					this.sendPublishMessage(Component.translatable("mcwifipnp.p2p.host_started"));
+				} else {
+					this.sendPublishMessage(Component.translatable("mcwifipnp.p2p.host_off"));
 				}
 			}
 		}
@@ -166,8 +169,10 @@ public class MultiplayerOptionsScreenNew extends Screen
 				p2p.setAutoSwitch(cfg.p2pAutoSwitch);
 				if (cfg.enableP2P) {
 					p2p.startHost(singleplayerServer.getPort());
+					this.sendPublishMessage(Component.translatable("mcwifipnp.p2p.host_started"));
 				} else {
 					p2p.stopHost();
+					this.sendPublishMessage(Component.translatable("mcwifipnp.p2p.host_off"));
 				}
 			}
 		}

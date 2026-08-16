@@ -73,5 +73,7 @@
   "mcwifipnp.p2p.consent_declined": "%s declined the direct P2P connection.",
   "mcwifipnp.gui.P2PToken": "P2P Token",
   "mcwifipnp.gui.P2PToken.hint": "Leave empty for no token",
-  "mcwifipnp.gui.P2PToken.info": "Require members to enter this token before they can establish a direct P2P connection. Leave empty to allow anyone."
+  "mcwifipnp.gui.P2PToken.info": "Require members to enter this token before they can establish a direct P2P connection. Leave empty to allow anyone.",
+  "mcwifipnp.p2p.host_started": "P2P hole punching is enabled. Members who join will be asked if they want a direct connection.",
+  "mcwifipnp.p2p.host_off": "P2P hole punching is off. Members will connect through the relay as usual."
 }
