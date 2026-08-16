@@ -64,6 +64,14 @@ public final class P2PClientCommand {
 							manager.onMemberConnectRequested();
 							return 1;
 						})))
+				.then(Commands.literal("relay")
+						.then(Commands.argument("url", StringArgumentType.greedyString()).executes(ctx -> {
+							P2PManager manager = P2PManager.getInstance();
+							String url = StringArgumentType.getString(ctx, "url").trim();
+							manager.setRelayUrl("none".equalsIgnoreCase(url) ? null : url);
+							manager.onMemberConnectRequested();
+							return 1;
+						})))
 				.then(Commands.literal("status").executes(ctx -> {
 					ctx.getSource().sendSuccess(() -> memberStatus(), false);
 					return 1;

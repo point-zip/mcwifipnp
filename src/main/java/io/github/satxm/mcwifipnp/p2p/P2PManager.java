@@ -120,6 +120,15 @@ public final class P2PManager {
 		return this.memberEnabled;
 	}
 
+	/** Custom iroh relay URL (null/empty = default relay network). Applies on both sides. */
+	public void setRelayUrl(String relayUrl) {
+		this.iroh.setRelayUrl(relayUrl);
+	}
+
+	public String getRelayUrl() {
+		return this.iroh.getRelayUrl();
+	}
+
 	/** The shared iroh endpoint manager. */
 	public IrohEndpointManager getIroh() {
 		return this.iroh;

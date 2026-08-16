@@ -89,6 +89,18 @@ public class MCWiFiPnP implements ModInitializer, ClientModInitializer, Dedicate
 												manager.onMemberConnectRequested();
 												return 1;
 											})))
+							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("relay")
+									.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("url",
+											com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+											.executes(ctx -> {
+												io.github.satxm.mcwifipnp.p2p.P2PManager manager = io.github.satxm.mcwifipnp.p2p.P2PManager
+														.getInstance();
+												String url = com.mojang.brigadier.arguments.StringArgumentType
+														.getString(ctx, "url").trim();
+												manager.setRelayUrl("none".equalsIgnoreCase(url) ? null : url);
+												manager.onMemberConnectRequested();
+												return 1;
+											})))
 							.then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("status")
 									.executes(ctx -> {
 										ctx.getSource().sendFeedback(
